@@ -95,19 +95,19 @@ class KSUMX:
             if self.debug:
                 print(f"Running {rep_idx}: cost {self.time_arr[rep_idx]}s")
 
-import ksums
-
+import evaluation
+import loaddata
 
 data_name = "FaceV5"
-X, y_true, c_true, NN, NND, t1 = ksums.load_data(data_name)
+X, y_true, c_true, NN, NND, t1 = loaddata.load_data(data_name)
 obj = KSUMX(X, c_true, debug=True)
 
 init_Y = np.zeros((10, X.shape[0]), dtype=int)
 obj.opt(init_Y, max_iter=100)
 
-acc = ksums.multi_accuracy(y_true, obj.Y)
-nmi = ksums.multi_nmi(y_true, obj.Y)
-ari = ksums.multi_ari(y_true, obj.Y)
+acc = evaluation.multi_accuracy(y_true, obj.Y)
+nmi = evaluation.multi_nmi(y_true, obj.Y)
+ari = evaluation.multi_ari(y_true, obj.Y)
 print(obj.Y[0])
 tt = obj.time_arr
 print(f"{data_name}: {np.mean(acc):.3f}(±{np.std(acc):.2e}), {np.mean(nmi):.3f}(±{np.std(nmi):.2e}), {np.mean(ari):.3f}(±{np.std(ari):.2e}), {np.mean(tt):.3f}(±{t1 + np.std(tt):.2e})")

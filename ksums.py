@@ -5,60 +5,58 @@ import numpy as np
 import scipy.io as sio
 from scipy import sparse
 from scipy.spatial.distance import cdist
-from scipy.optimize import linear_sum_assignment
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import normalized_mutual_info_score
-from sklearn.metrics import adjusted_rand_score
 
+import loaddata
+import evaluation
 from MyOrder import KeepOrder
 
-def load_mat(path, to_dense=True):
-    data = sio.loadmat(path)
-    X = data["X"]
-    if "y_true" in data.keys():
-        y_true = data["y_true"].astype(np.int32).reshape(-1)
-    elif "Y" in data.keys():
-        y_true = data["Y"].astype(np.int32).reshape(-1)
-    else:
-        assert 1==0
+# def load_mat(path, to_dense=True):
+#     data = sio.loadmat(path)
+#     X = data["X"]
+#     if "y_true" in data.keys():
+#         y_true = data["y_true"].astype(np.int32).reshape(-1)
+#     elif "Y" in data.keys():
+#         y_true = data["Y"].astype(np.int32).reshape(-1)
+#     else:
+#         assert 1==0
 
-    if sparse.isspmatrix(X) and to_dense:
-        X = X.toarray()
+#     if sparse.isspmatrix(X) and to_dense:
+#         X = X.toarray()
 
-    N, dim, c_true = X.shape[0], X.shape[1], len(np.unique(y_true))
-    return X, y_true, N, dim, c_true
+#     N, dim, c_true = X.shape[0], X.shape[1], len(np.unique(y_true))
+#     return X, y_true, N, dim, c_true
 
-def load_data(data_name):
-    current_path = os.path.dirname(__file__)
-    data_full_name = os.path.join(current_path, f"data/{data_name}.mat")
-    X, y_true, N, dim, c_true = load_mat(data_full_name)
-    X = X.astype(np.float64)
+# def load_data(data_name):
+#     current_path = os.path.dirname(__file__)
+#     data_full_name = os.path.join(current_path, f"data/{data_name}.mat")
+#     X, y_true, N, dim, c_true = load_mat(data_full_name)
+#     X = X.astype(np.float64)
 
-    knn = int(N/c_true * 1.2)
-    t_start = time.time()
-    NN, NND = getNNwithDistance(X, knn)
-    t_end = time.time()
-    t1 = t_end - t_start
-    return X, y_true, c_true, NN, NND, t1
+#     knn = int(N/c_true * 1.2)
+#     t_start = time.time()
+#     NN, NND = getNNwithDistance(X, knn)
+#     t_end = time.time()
+#     t1 = t_end - t_start
+#     return X, y_true, c_true, NN, NND, t1
 
-def getNNwithDistance(X, knn):
-    D_full = cdist(X, X, metric='sqeuclidean')
-    np.fill_diagonal(D_full, -1)
-    NN_full = np.argsort(D_full, axis=1)
-    np.fill_diagonal(D_full, 0)
+# def getNNwithDistance(X, knn):
+#     D_full = cdist(X, X, metric='sqeuclidean')
+#     np.fill_diagonal(D_full, -1)
+#     NN_full = np.argsort(D_full, axis=1)
+#     np.fill_diagonal(D_full, 0)
 
-    NN = NN_full[:, :knn]
+#     NN = NN_full[:, :knn]
 
-    ind_M = NN
-    n, k = NN.shape
-    row = np.repeat(np.array(range(n), dtype=np.int32), k)
-    col = ind_M.reshape(-1)
-    NND = D_full[row, col].reshape((n, k))
+#     ind_M = NN
+#     n, k = NN.shape
+#     row = np.repeat(np.array(range(n), dtype=np.int32), k)
+#     col = ind_M.reshape(-1)
+#     NND = D_full[row, col].reshape((n, k))
 
-    return NN, NND
-##########################
-## input has been checked
-##########################
+#     return NN, NND
+# ##########################
+# ## input has been checked
+# ##########################
 
 class KSUMS:
     def __init__(self, NN, NND, c_true, debug, max_dd):
@@ -272,41 +270,18 @@ class KSUMS:
         else:
             return min_cluster
 
-def accuracy(y_true, y_pred):
-    cm = confusion_matrix(y_true=y_true, y_pred=y_pred)
-    cost_m = np.max(cm) - cm
-    indices = linear_sum_assignment(cost_m)
-    indices = np.asarray(indices)
-    indexes = np.transpose(indices)
-    total = 0
-    for row, column in indexes:
-        value = cm[row][column]
-        total += value
-    return total * 1. / np.sum(cm)
 
-def multi_accuracy(y_true, Y_predict):
-    ret = np.array([accuracy(y_true=y_true, y_pred=y_pred) for y_pred in Y_predict])
-    return ret
+if __name__ == '__main__':
+    data_name = "FaceV5"
+    X, y_true, c_true, NN, NND, t1 = loaddata.load_data(data_name)
 
-def multi_nmi(y_true, Y_predict):
-    ret = np.array([normalized_mutual_info_score(labels_true=y_true, labels_pred=y_pred,  average_method="max") for y_pred in Y_predict])
-    return ret
+    obj = KSUMS(NN.astype(np.int32), NND, c_true, debug=True, max_dd=-1)
+    obj.opt(rep=10, MAX_ITER=100, our_init=1)
+    t2 = obj.time_arr
 
-def multi_ari(y_true, Y_predict):
-    ret = np.array([adjusted_rand_score(labels_true=y_true, labels_pred=y_pred) for y_pred in Y_predict])
-    return ret
-
-
-data_name = "FaceV5"
-X, y_true, c_true, NN, NND, t1 = load_data(data_name)
-
-obj = KSUMS(NN.astype(np.int32), NND, c_true, debug=True, max_dd=-1)
-obj.opt(rep=10, MAX_ITER=100, our_init=1)
-t2 = obj.time_arr
-
-acc = multi_accuracy(y_true, obj.Y)
-nmi = multi_nmi(y_true, obj.Y)
-ari = multi_ari(y_true, obj.Y)
-print(f"{data_name}: {np.mean(acc):.3f}(±{np.std(acc):.2e}), {np.mean(nmi):.3f}(±{np.std(nmi):.2e}), {np.mean(ari):.3f}(±{np.std(ari):.2e}), {t1 + np.mean(t2):.3f}(±{t1 + np.std(t2):.2e})")
-#  0.949(2.15e-03), 0.979(1.67e-03), 0.844(3.15e-02), 1.955(1.49e+00)
-# paper: 0.963, 0.986, 0.915, 0.254
+    acc = evaluation.multi_accuracy(y_true, obj.Y)
+    nmi = evaluation.multi_nmi(y_true, obj.Y)
+    ari = evaluation.multi_ari(y_true, obj.Y)
+    print(f"{data_name}: {np.mean(acc):.3f}(±{np.std(acc):.2e}), {np.mean(nmi):.3f}(±{np.std(nmi):.2e}), {np.mean(ari):.3f}(±{np.std(ari):.2e}), {t1 + np.mean(t2):.3f}(±{t1 + np.std(t2):.2e})")
+    #  0.949(2.15e-03), 0.979(1.67e-03), 0.844(3.15e-02), 1.955(1.49e+00)
+    # paper: 0.963, 0.986, 0.915, 0.254
