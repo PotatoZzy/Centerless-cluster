@@ -27,7 +27,7 @@ def load_data(data_name):
     data_full_name = os.path.join(current_path, f"data/{data_name}.mat")
     X, y_true, N, dim, c_true = load_mat(data_full_name)
     X = X.astype(np.float64)
-
+    print(f"X size {X.shape}")
     knn = int(N/c_true * 1.2)
     t_start = time.time()
     NN, NND = getNNwithDistance(X, knn)
