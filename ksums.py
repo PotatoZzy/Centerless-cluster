@@ -223,15 +223,19 @@ class KSUMS:
 
 if __name__ == '__main__':
     data_name = "FaceV5"
+    # data_name = "mpeg7"
+    # data_name = "isolet"
     X, y_true, c_true, NN, NND, t1 = loaddata.load_data(data_name)
 
     obj = KSUMS(NN.astype(np.int32), NND, c_true, debug=True, max_dd=-1)
     obj.opt(rep=10, MAX_ITER=100, our_init=1)
+    # obj.opt(rep=5, MAX_ITER=100, our_init=1)
     t2 = obj.time_arr
 
     acc = evaluation.multi_accuracy(y_true, obj.Y)
     nmi = evaluation.multi_nmi(y_true, obj.Y)
     ari = evaluation.multi_ari(y_true, obj.Y)
     print(f"{data_name}: {np.mean(acc):.3f}(±{np.std(acc):.2e}), {np.mean(nmi):.3f}(±{np.std(nmi):.2e}), {np.mean(ari):.3f}(±{np.std(ari):.2e}), {t1 + np.mean(t2):.3f}(±{t1 + np.std(t2):.2e})")
-    #  0.949(2.15e-03), 0.979(1.67e-03), 0.844(3.15e-02), 1.955(1.49e+00)
+    # FaceV5
+    # repro: 0.949(2.15e-03), 0.979(1.67e-03), 0.844(3.15e-02), 1.955(1.49e+00)
     # paper: 0.963, 0.986, 0.915, 0.254
